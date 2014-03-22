@@ -6,7 +6,8 @@ Created on Sun Mar 16 16:27 2014
 
 Title: Local alignment with affine penalty gap
 
-Uses Needleman Wunsch algorithm , using numpy
+Uses Needleman Wunsch algorithm , using numpy.
+Caching version.
 Details: http://rosalind.info/problems/laff
 """
 import ReadFiles as io
