@@ -4,4 +4,7 @@
 *.txt
 *.zip
 *.spyderworkspace
-*/
+*.log
+*.prof
+*.exe
+*.o
