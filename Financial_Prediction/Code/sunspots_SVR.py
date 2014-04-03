@@ -19,7 +19,8 @@ def getdata():
     dta.index = pd.Index(sm.tsa.datetools.dates_from_range('1700', '2008'))
     del dta["YEAR"]
     return dta
-
+    
+# Data handling
 s = getdata()
 ORDER = 3 # Order of prediction
 X = pd.concat([s.shift(i) for i in range(1,ORDER+1)], axis=1).dropna()
@@ -29,6 +30,8 @@ Xtrain = X[:'1920']
 ytrain = y[:'1920']
 Xtest =  X['1920':'1988']
 ytest = y['1920':'1988']      
+
+#Machine learning part begins 
 gamma = 1/ (2*(290.19)**2)
 clf = SVR(C=43.6432,kernel='rbf',epsilon=0.5,gamma=gamma)
 model = clf.fit(Xtrain.values,ytrain.values.flatten())
