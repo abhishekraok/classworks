@@ -4,7 +4,7 @@ Created on Wed Apr 02 19:59:02 2014
 
 @author: Abhishek
 
-Echo State Networks library in "plain" scientific Python, 
+Echo self.state Networks library in "plain" scientific Python, 
 originally by Mantas LukoÅ¡eviÄ?ius 2012
 http://minds.jacobs-university.de/mantas
 Modified by Abhishek Rao, trying to convert into crude scikit form
@@ -15,9 +15,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 class ESN:
-    """Builds an Echo State network class
+    """Builds an Echo self.state network class
     
-    For more details visit http://minds.jacobs-university.de/sites/default/files/uploads/papers/EchoStatesTechRep.pdf
+    For more details visit http://minds.jacobs-university.de/sites/default/files/uploads/papers/Echoself.statesTechRep.pdf
     
     Parameters
     ----------
@@ -36,7 +36,7 @@ class ESN:
     initLen : float, optional (default=100)
         Number of steps for initialization of reservoir. 
     """
-    def __init__(self, inSize=1, outSize=1, resSize=100, 
+    def __init__(self, inSize=1, outSize=1, resSize=1000, 
                  a=0.3, initLen=100):
         random.seed(42)
         self.Win = (random.rand(resSize,1+inSize)-0.5) * 1
@@ -63,6 +63,10 @@ class ESN:
 
         y : {array-like, sparse matrix}, shape (n_samples, n_features)
             Target values (real numbers in regression)
+        Returns
+        -------
+        self : object
+            Returns the ESN class.        
         """
         
 #        # Making sure the input is numpy array, if not convert
@@ -71,32 +75,33 @@ class ESN:
 #        if not y.__class__ == <type 'numpy.ndarray'>':
 #            y = np.array(y) 
      
+        trainLen = X.shape[0]
         if len(X.shape) > 1 : # Check if array or matrix
             self.inSize = X.shape[1]
+            Yt = X[:self.outSize,self.initLen:trainLen]
         else:
             self.inSize = 1
-
-        trainLen = X.shape[0]
+            Yt = X[self.initLen:trainLen]
         self.outSize = y.shape[1]
         self.testLen = trainLen 
-        # allocated memory for the design (collected states) matrix
-        state = np.zeros((1+self.inSize+self.resSize,trainLen-self.initLen))
+        # allocated memory for the design (collected self.states) matrix
+        self.state = np.zeros((1+self.inSize+self.resSize,trainLen-self.initLen))
         # set the corresponding target matrix directly
-        Yt = zeros((self.outSize,trainLen-self.initLen))
+       
         
         # run the reservoir with the data and collect X
-        self.x = zeros((self.resSize,1))
+        self.x = np.zeros((self.resSize,1))
         for t in range(trainLen):
             u = X[t]
             self.x = (1-self.a)*self.x + self.a*tanh( dot( self.Win, vstack((1,u)) ) + dot( self.W, self.x ) )
             if t >= self.initLen:
-                state[:,t-self.initLen] = vstack((1,u,self.x))[:,0]
+                self.state[:,t-self.initLen] = vstack((1,u,self.x))[:,0]
                 
         # train the output
         reg = 1e-8  # regularization coefficient
-        state_T = state.T
-        self.Wout = dot( dot(Yt,state_T), linalg.inv( dot(state,state_T) + \
-            reg*eye(1+self.inSize+self.resSize) ) )
+        self.state_T = self.state.T
+        self.Wout = dot( dot(Yt,self.state_T), linalg.inv( dot(self.state,self.state_T) + \
+                    reg*eye(1+self.inSize+self.resSize) ) )
         return self
         
     def predict(self, X, testLen=None):
@@ -122,7 +127,7 @@ class ESN:
         for t in range(self.testLen):
             self.x = (1-self.a)*self.x + self.a*tanh( dot( self.Win, vstack((1,u)) ) + dot( self.W, self.x ) )
             y = np.dot( self.Wout, vstack((1,u,self.x)) )
-            Y[t] = np.reshape(y,Y[0].shape)
+            Y[t] = y
             # generative mode:
             u = y
             ## this would be a predictive mode:
@@ -131,11 +136,23 @@ class ESN:
 
 ############ Main #################
 X = np.loadtxt('data/MackeyGlass_t17.txt')
-y = X[None,100+1:2000+1] 
+y = X[100+1:2000+1, None] 
 mod1 = ESN()
 mod1 = mod1.fit(X,y)
 yp = mod1.predict(X)
+figure(1).clear()
+plot( X, 'g' )
+plot( yp, 'b' )
+title('Target and generated signals $y(n)$ starting at $n=0$')
+legend(['Target signal', 'Free-running predicted signal'])
 
+figure(3).clear()
+bar( range(len(mod1.Wout)), mod1.Wout.T )
+title('Output weights $\mathbf{W}^{out}$')
+
+show()
+mse = sum( square( X[100+1:2000+1]  - y ) ) / y.shape[0]
+print 'MSE = ' + str( mse )
 ############ End ###################
 def originalcode():   
     # load the data
@@ -166,7 +183,7 @@ def originalcode():
     print 'done.'
     W *= 1.25 / rhoW
     
-    # allocated memory for the design (collected states) matrix
+    # allocated memory for the design (collected self.states) matrix
     X = zeros((1+inSize+resSize,trainLen-initLen))
     # set the corresponding target matrix directly
     Yt = data[None,initLen+1:trainLen+1] 
