@@ -43,8 +43,8 @@ class ESN:
         # Option 1 - direct scaling (quick&dirty, reservoir-specific):
         #W *= 0.135 
         # Option 2 - normalizing and setting spectral radius (correct, slow):
-#        self.rhoW = max(abs(np.linalg.eig(self.W)[0]))
-#        self.W *= 1.25 / self.rhoW
+        self.rhoW = max(abs(np.linalg.eig(self.W)[0]))
+        self.W *= 1.25 / self.rhoW
         self.resSize = resSize 
         self.a = a
         self.initLen = initLen

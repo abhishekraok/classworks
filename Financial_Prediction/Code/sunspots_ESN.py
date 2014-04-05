@@ -29,7 +29,7 @@ Xtest =  X['1920':'1988']
 ytest = y['1920':'1988']      
 
 #Machine learning part begins 
-clf = es.ESN(initLen=20)
+clf = es.ESN(initLen=20, resSize = 20)
 model = clf.fit(Xtrain.values,ytrain.values)
 yp = pd.DataFrame( data=model.predict(Xtest.values), 
                   index=ytest.index, columns=ytest.columns)
