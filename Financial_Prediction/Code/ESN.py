@@ -6,7 +6,7 @@ Created on Wed Apr 02 19:59:02 2014
 
 Echo self.state Networks library in "plain" scientific Python, 
 originally by Mantas LukoÅ¡eviÄ?ius 2012
-http://minds.jacobs-university.de/mantas
+http://minds.jacobs-university.de/mantas/code
 Modified by Abhishek Rao, trying to convert into crude scikit form
 https://sites.google.com/site/abhishekraokrishna/
 """
@@ -35,9 +35,13 @@ class ESN:
          
     initLen : float, optional (default=100)
         Number of steps for initialization of reservoir. 
+
+    trainLen : float, optional (default=2000)
+        Number of steps for training of reservoir. 
+        
     """
     def __init__(self, inSize=1, outSize=1, resSize=1000, 
-                 a=0.3, initLen=100):
+                 a=0.3, initLen=100, trainLen=2000):
         random.seed(42)
         self.Win = (random.rand(resSize,1+inSize)-0.5) * 1
         self.W = random.rand(resSize,resSize)-0.5
@@ -47,8 +51,9 @@ class ESN:
         self.rhoW = max(abs(linalg.eig(self.W)[0]))
         self.W *= 1.25 / self.rhoW
         self.resSize = resSize 
-        self.initLen = initLen
         self.a = a
+        self.initLen = initLen
+        self.trainLen = trainLen
         
     def fit(self, X, y):
         """Fit the ESN model according to the given training data.
@@ -74,24 +79,24 @@ class ESN:
 #            X = np.array(X)
 #        if not y.__class__ == <type 'numpy.ndarray'>':
 #            y = np.array(y) 
-     
-        trainLen = X.shape[0]
+
+        self.outSize = y.shape[1]
         if len(X.shape) > 1 : # Check if array or matrix
             self.inSize = X.shape[1]
-            Yt = X[:self.outSize,self.initLen:trainLen]
+            Yt = X[None,self.initLen+1:self.trainLen+1]
         else:
             self.inSize = 1
-            Yt = X[self.initLen:trainLen]
-        self.outSize = y.shape[1]
-        self.testLen = trainLen 
+            Yt = X[None,self.initLen+1:self.trainLen+1]
+        
+        self.testLen = self.trainLen 
         # allocated memory for the design (collected self.states) matrix
-        self.state = np.zeros((1+self.inSize+self.resSize,trainLen-self.initLen))
+        self.state = np.zeros((1+self.inSize+self.resSize,self.trainLen-self.initLen))
         # set the corresponding target matrix directly
        
         
         # run the reservoir with the data and collect X
         self.x = np.zeros((self.resSize,1))
-        for t in range(trainLen):
+        for t in range(self.trainLen):
             u = X[t]
             self.x = (1-self.a)*self.x + self.a*tanh( dot( self.Win, vstack((1,u)) ) + dot( self.W, self.x ) )
             if t >= self.initLen:
@@ -119,19 +124,17 @@ class ESN:
         -------
         y_pred : {array-like, sparse matrix}, shape (n_samples, n_features)
         """
-        trainLen = X.shape[0]
+        self.trainLen = X.shape[0]
         if testLen == None:
             testLen = self.testLen
         Y = np.zeros((testLen, self.outSize))
-        u = X[0]
         for t in range(self.testLen):
+            u = X[t] ## this would be a predictive mode:
             self.x = (1-self.a)*self.x + self.a*tanh( dot( self.Win, vstack((1,u)) ) + dot( self.W, self.x ) )
             y = np.dot( self.Wout, vstack((1,u,self.x)) )
             Y[t] = y
             # generative mode:
-            u = y
-            ## this would be a predictive mode:
-            #u = data[trainLen+t+1]     
+            # u = y
         return Y
 
 ############ Main #################
@@ -139,7 +142,7 @@ X = np.loadtxt('data/MackeyGlass_t17.txt')
 y = X[100+1:2000+1, None] 
 mod1 = ESN()
 mod1 = mod1.fit(X,y)
-yp = mod1.predict(X)
+yp = mod1.predict(X[2000:])
 figure(1).clear()
 plot( X, 'g' )
 plot( yp, 'b' )
@@ -147,7 +150,7 @@ title('Target and generated signals $y(n)$ starting at $n=0$')
 legend(['Target signal', 'Free-running predicted signal'])
 
 figure(3).clear()
-bar( range(len(mod1.Wout)), mod1.Wout.T )
+plot( range(len(mod1.Wout.T)), mod1.Wout.T)
 title('Output weights $\mathbf{W}^{out}$')
 
 show()
