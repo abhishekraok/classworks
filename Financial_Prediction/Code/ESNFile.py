@@ -12,6 +12,51 @@ https://sites.google.com/site/abhishekraokrishna/
 """
 import numpy as np
 
+def ts_train_test_split(X, test_size=0.3, lags=0):
+    """ Converts time series data into Xtrain, ytrain, Xtest and ytest.
+    
+    y is calculated from X using y[n]=x[n+1]. Therefore 
+    y = np.roll(X). X converted from a (n_samples,n_features) matrix into 
+    (n_samples,n_features x (lags+1)) matrix.
+       
+        Parameters
+        ----------
+        X : {array-like, sparse matrix}, shape (n_samples, n_features)
+            Time Series vectors, where n_samples is the number of samples
+            and n_features is the number of features.
+            
+        test_size : float, optional (default=0.3)
+            Ratio of test length to train length returned.
+            
+        lags : float, optional (default=0)
+            The number of previous data values to pack in each X.
+            e.g. if lags = P then X'[n] = [X[n],X[n-1],..X[n-P]]
+                   
+        Returns
+        -------
+        Xtrain : {array-like, sparse matrix}, shape (n_samples x (1-testRatio), n_features x (lags+1))
+            Train input values.
+            
+        Xtest : {array-like, sparse matrix}, shape (n_samples x (testRatio), n_features x (lags+1))
+            Test input values.
+
+        ytrain : {array-like, sparse matrix}, shape (n_samples x (1-testRatio), n_features x (lags+1))
+            Target values for training.
+
+        ytest : {array-like, sparse matrix}, shape (n_samples x (testRatio), n_features x (lags+1))
+            Target test values.
+            
+        """   
+        
+    y = X[1+lags:]
+    if lags > 0:
+        X = np.array([X[i:i+lags+1] for i in range(len(X)-lags-1)])
+    else:
+        X = X[:-1]
+    Ntrain = int(np.round( len(X)*(1-test_size) ))
+    return X[:Ntrain], X[Ntrain:], y[:Ntrain], y[Ntrain:]
+
+
 class ESN:
     """Builds an Echo self.state network class
     
@@ -19,26 +64,20 @@ class ESN:
     
     Parameters
     ----------
-    inSize : float, optional (default=1.0)
-        Dimension of the input vector.
-
-    outSize : float, optional (default=1.0)
-        Dimension of the output vector.
-
     resSize : float, optional (default=1000)
         The number of nodes in the reservoir.
 
     a : float, optional (default=0.3)
         Leak rate of the neurons.
          
-    initLen : float, optional (default=100)
-        Number of steps for initialization of reservoir. 
+    initLen : float, optional (default=None)
+        Number of steps for initialization of reservoir. If no option
+        passed then length of input divided by 10 is used.
 
     """
-    def __init__(self, inSize=1, outSize=1, resSize=1000, 
-                 a=0.3, initLen=100, trainLen=2000):
+    def __init__(self, resSize=100, 
+                 a=0.3, initLen=None, trainLen=2000):
         np.random.seed(42)
-        self.Win = (np.random.rand(resSize,1+inSize)-0.5) * 1
         self.W = np.random.rand(resSize,resSize)-0.5
         # Option 1 - direct scaling (quick&dirty, reservoir-specific):
         #W *= 0.135 
@@ -72,7 +111,9 @@ class ESN:
         self : object
             Returns the ESN class.        
         """
-        self.outSize = y.shape[1]
+        self.outSize = y.shape[1] if len(y.shape) > 1 else None
+        if self.initLen == None:
+            self.initLen = int(np.floor(len(X)/10))
         if trainLen == None:
             trainLen = X.shape[0]
         if len(X.shape) > 1 : # Check if array or matrix
@@ -81,12 +122,13 @@ class ESN:
         else:
             self.inSize = 1
             trainLen = min(trainLen, len(X))
+        self.Win = (np.random.rand(self.resSize,1+self.inSize)-0.5) * 1
          # allocated memory for the design (collected self.states) matrix
         self.state = np.zeros((1+self.inSize+self.resSize,trainLen-self.initLen))
         # run the reservoir with the data and collect X
         self.x = np.zeros((self.resSize,1))
         for t in range(trainLen):
-            u = X[t]
+            u = X[None,t].T
             self.x = (1-self.a)*self.x + self.a*np.tanh( np.dot( self.Win, np.vstack((1,u)) ) + np.dot( self.W, self.x ) )
             if t >= self.initLen:
                 self.state[:,t-self.initLen] = np.vstack((1,u,self.x))[:,0]
@@ -116,13 +158,43 @@ class ESN:
         """
         if testLen == None:
             testLen = X.shape[0]
-        Y = np.zeros((testLen, self.outSize))
+        Y = np.zeros((testLen, self.outSize if not self.outSize == None else 1))
         
         for t in range( min(testLen,X.shape[0]) ):
-            u = X[t] ## this would be a predictive mode:
+            u = X[None,t].T ## this would be a predictive mode:
             self.x = (1-self.a)*self.x + self.a*np.tanh( np.dot( self.Win, np.vstack((1,u)) ) + np.dot( self.W, self.x ) )
             y = np.dot( self.Wout, np.vstack((1,u,self.x)) )
-            Y[t] = y
+            Y[t] = y.reshape(Y[0].shape)
             # generative mode:
             # u = y
+        if self.outSize == None:
+            Y = Y.reshape(Y.shape[0])
         return Y
+        
+    def checkts(self,X):
+        """ Tests timeseries X's performance in ESN.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix}, shape (n_samples, n_features)
+
+        Returns
+        -------
+        NMSE : {float}
+               The normalized Mean Square Error of predicted output (yp)
+               and actual output (ytest)
+               
+        yp : {array-like, sparse matrix}, shape (n_samples, n_features)       
+             The predicted value of output based on Xtest. 
+             yp = ESN.predict(Xtest)
+             
+        ytest : {array-like, sparse matrix}, shape (n_samples, n_features)
+               The actual target values in the test set.
+               
+        """
+        
+        Xtrain,Xtest,ytrain,ytest = ts_train_test_split(X)
+        self = self.fit(Xtrain,ytrain)
+        yp = self.predict(Xtest)
+        return (yp-ytest).var() / ytest.var(), yp, ytest
+        
