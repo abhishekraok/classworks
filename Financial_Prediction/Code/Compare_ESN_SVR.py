@@ -17,8 +17,7 @@ from sklearn.svm import SVR
 import pandas as pd
 from sklearn import linear_model
 
-svmd = SVR(C=43.6432,kernel='rbf',epsilon=0.5,gamma=1/ (2*(290.19)**2))  
-modelsets = [es.ESN(),svmd, linear_model.Ridge ()]
+modelsets = [es.ESN(),SVR(), linear_model.Ridge ()]
 modelnames = ['ESN','SVR','LRR']
 
 datasets = [sm.datasets.sunspots.load_pandas().data.ix[:,1].values,
