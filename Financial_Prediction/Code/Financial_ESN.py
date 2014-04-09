@@ -37,11 +37,27 @@ X = df.ix[:,:5].resample('M', how='mean')
 #ax = ytest.plot(style='o--')
 #ax = yp.plot(ax=ax,style = 'd-', label='Predicted')
 #ax.legend()
-mod1 = es.ESN(resSize=999,initLen=100)
-NMSE,yp,ytest = mod1.checkts(X.values)
-plt.figure()
-plt.plot(yp[:999],'o-',label='Predicted')
-plt.plot(ytest[:999],'^-.',label='Test target')
-plt.legend()
-plt.title('Prediction for reservoir size {0}'.format(i))
-print 'For reservoir size {0} the NMSE is {1}'.format(i,NMSE) 
+#mod1 = es.ESN(resSize=999,initLen=100)
+#NMSE,yp,ytest = mod1.checkts(X.values)
+#plt.figure()
+#plt.plot(yp[:999],'o-',label='Predicted')
+#plt.plot(ytest[:999],'^-.',label='Test target')
+#plt.legend()
+#plt.title('Prediction for reservoir size {0}'.format(i))
+#print 'For reservoir size {0} the NMSE is {1}'.format(i,NMSE) 
+modelsets = [es.ESN()]
+modelnames = ['ESN']
+
+datasets = [pd.read_csv('data/pdeqretsnonan.csv',
+                 index_col=0, parse_dates=True).ix[:,:5].resample('M',
+                 how='mean').values]
+datasetnames = ['Financial']
+
+for X,dname in zip(*[datasets,datasetnames]):
+    Xtrain,Xtest,ytrain,ytest = es.ts_train_test_split(X, lags=3)
+    for ithmodel, mname in zip(*[modelsets,modelnames]):  
+        model = ithmodel
+        model = ithmodel.fit(Xtrain,ytrain)
+        yp = model.predict(Xtest)
+        NMSE = (yp-ytest).var() / ytest.var()
+        print 'The NMSE for model {0} using data {1} is {2}'.format(mname,dname,NMSE)

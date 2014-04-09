@@ -50,7 +50,7 @@ def ts_train_test_split(X, test_size=0.3, lags=0):
         
     y = X[1+lags:]
     if lags > 0:
-        X = np.array([X[i:i+lags+1] for i in range(len(X)-lags-1)])
+        X = np.array([X[i:i+lags+1].flatten() for i in range(len(X)-lags-1)])
     else:
         X = X[:-1]
     Ntrain = int(np.round( len(X)*(1-test_size) ))
@@ -76,7 +76,7 @@ class ESN:
 
     """
     def __init__(self, resSize=100, 
-                 a=0.3, initLen=None, trainLen=2000):
+                 a=0.3, initLen=None):
         np.random.seed(42)
         self.W = np.random.rand(resSize,resSize)-0.5
         # Option 1 - direct scaling (quick&dirty, reservoir-specific):

@@ -12,6 +12,7 @@ import pandas
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from statsmodels.graphics.api import qqplot
+from sklearn.svm import SVR
 
 def arfx(dta):
     # Fit AR9, ARMA2, ARMA3 models and check
@@ -45,10 +46,13 @@ Xtrain = dta['1700':'1920']
 Xtest =  dta['1920':'1988']
      
 yp = simplepred(Xtest) 
+clf = SVR(C=1.0, epsilon=0.2)
+
 MSE = measMSE(yp,Xtest)
 print 'The MSE is '
 print MSE
 
-ax = yp.plot(style = 'd')
-ax = Xtest.plot(ax=ax)
+ax = Xtest.plot()
+ax = yp.plot(ax=ax,style = 'd', label='Predicted')
+ax.legend()
 

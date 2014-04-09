@@ -37,6 +37,6 @@ plt.figure()
 plt.plot(yp[:999],'o-',label='Predicted')
 plt.plot(ytest[:999],'d--',label='Test target')
 plt.legend()
-plt.title('Prediction for reservoir size {0}'.format(i))
-print 'For reservoir size {0} the NMSE is {1}'.format(i,NMSE) 
+plt.title('Prediction for reservoir size {0}'.format(resSize))
+print 'For reservoir size {0} the NMSE is {1}'.format(resSize,NMSE) 
     
