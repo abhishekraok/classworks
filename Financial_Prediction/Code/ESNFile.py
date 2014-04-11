@@ -128,6 +128,7 @@ class ESN:
         # run the reservoir with the data and collect X
         self.x = np.zeros((self.resSize,1))
         for t in range(trainLen):
+#check this
             u = X[None,t].T
             self.x = (1-self.a)*self.x + self.a*np.tanh( np.dot( self.Win, np.vstack((1,u)) ) + np.dot( self.W, self.x ) )
             if t >= self.initLen:
