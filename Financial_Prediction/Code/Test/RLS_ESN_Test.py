@@ -9,12 +9,16 @@ import matplotlib.pyplot as plt
 import sys
 if not sys.path.count(".."): sys.path.append("..")
 import ESNFile as es
+import statsmodels.api as sm
 
-X = np.loadtxt('../data/MackeyGlass_t17.txt')[:800]
+#X = np.loadtxt('../data/MackeyGlass_t17.txt')[:800]
+X = sm.datasets.sunspots.load_pandas().data.ix[:,1].values
 ytest = X[1:]
 X = X[:-1]
-mod1 = es.ESN(resSize=4,)
-mod1,yp = mod1.adaptfitpredict(X,ytest)
+initLen = 0
+mod1 = es.ESN(resSize=4,initLen=initLen)
+yp = mod1.adaptfitpredict(X,ytest)
+ytest = ytest[initLen:]
 aWout = mod1.Wout
 print (yp-ytest).var()/ytest.var()
 plt.figure()
