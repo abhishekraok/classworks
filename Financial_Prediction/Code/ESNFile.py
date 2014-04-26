@@ -11,6 +11,7 @@ Modified by Abhishek Rao, trying to convert into crude scikit form
 https://sites.google.com/site/abhishekraokrishna/
 """
 import numpy as np
+import data_matrix as rls
 
 def ts_train_test_split(X, test_size=0.3, lags=0):
     """ Converts time series data into Xtrain, ytrain, Xtest and ytest.
@@ -128,7 +129,7 @@ class ESN:
         # run the reservoir with the data and collect X
         self.x = np.zeros((self.resSize,1))
         for t in range(trainLen):
-#check this
+            # TODO check this
             u = X[None,t].T
             self.x = (1-self.a)*self.x + self.a*np.tanh( np.dot( self.Win, np.vstack((1,u)) ) + np.dot( self.W, self.x ) )
             if t >= self.initLen:
@@ -199,3 +200,94 @@ class ESN:
         yp = self.predict(Xtest)
         return (yp-ytest).var() / ytest.var(), yp, ytest
         
+    def adaptfitpredict(self, X, y):
+        """Fit the ESN model adaptively and predict according to 
+        the given training data. 
+        Notations: Here X is used instead of u[n] for input following scikit
+        learn convention. For the internal nodes state is used instead of X.
+        
+        Parameters
+        ----------
+        X : {array-like, sparse matrix}, shape (n_samples, n_features)
+            Training vectors, where n_samples is the number of samples
+            and n_features is the number of features.
+
+        y : {array-like, sparse matrix}, shape (n_samples, n_features)
+            Target values (real numbers in regression)
+
+                   
+        Returns
+        -------
+        y_pred : {array-like, sparse matrix}, shape (n_samples, n_features)
+            Predicted value of target(n+1) ~= y(n) = Wout*[x(n) u(n)]
+            
+        self : object
+            Returns the ESN class.        
+
+        """
+        
+        # Initializtions
+        self.outSize = y.shape[1] if len(y.shape) > 1 else 1
+        if self.initLen == None:
+            self.initLen = int(np.floor(len(X)/10))
+        trainLen = X.shape[0]
+        if len(X.shape) > 1 : # Check if array or matrix
+            self.inSize = X.shape[1]
+            trainLen = min(trainLen, X.shape[0])
+        else:
+            self.inSize = 1
+            trainLen = min(trainLen, len(X))
+        self.Win = (np.random.rand(self.resSize,1+self.inSize)-0.5) * 1
+         # allocated memory for the design (collected self.states) matrix
+        self.state = np.zeros((1+self.inSize+self.resSize,trainLen-self.initLen))
+        Y = np.zeros((trainLen, self.outSize))
+        Nin = self.resSize+self.inSize +1
+        # End of initializations 
+        
+        # Recursive Least Square solution for Wout
+        
+        self.Wout = np.random.rand(self.outSize, Nin)-0.5
+        P0i = [np.identity(Nin) for i in range(self.outSize)]
+        RLSWout = [rls.Estimator(self.Wout[i,:].reshape(-1,1),P0i[i]) for i in range(self.outSize)]    
+        Rk = 1e-2 # This is not really needed, all our measurements
+        #.. have equal variance
+        # Loop begins
+        # run the reservoir with the data and collect X
+        self.x = np.zeros((self.resSize,1))
+        for t in range(trainLen):
+            u = X[None,t].T
+            self.x = (1-self.a)*self.x + self.a*np.tanh(np.dot(self.Win, np.vstack((1,u))) + np.dot( self.W, self.x ) )
+            if t >= self.initLen:
+                self.state[:,t-self.initLen] = np.vstack((1,u,self.x))[:,0]
+                yp = np.dot( self.Wout, np.vstack((1,u,self.x)))
+                for k,(pmat,rlsi) in enumerate(zip(P0i,RLSWout)):
+                    yact = y[t,k].reshape(-1,1) if len(y.shape) > 1 else y[t]
+                    rlsi.update(np.vstack((1,u,self.x)).reshape(1,-1),yact,Rk)
+                    self.Wout[k] = rlsi.x.T
+                Y[t] = yp.reshape(Y[0].shape)
+        Y = Y.reshape(y.shape)
+        #Debug code 
+#        reg = 1e-8  # regularization coefficient
+#        self.state_T = self.state.T
+#        self.Wouti = np.dot( np.dot(y[self.initLen:].T,self.state_T), np.linalg.inv( np.dot(self.state,self.state_T) + \
+#                    reg*np.eye(1+self.inSize+self.resSize) ) )
+        return Y, self
+
+class ESNC(ESN):
+    """Builds an Echo State Network Classifier Class
+    
+    Modified version of visit http://minds.jacobs-university.de/sites/default/files/uploads/papers/Echoself.statesTechRep.pdf
+    
+    Parameters
+    ----------
+    resSize : float, optional (default=1000)
+        The number of nodes in the reservoir.
+
+    a : float, optional (default=0.3)
+        Leak rate of the neurons.
+         
+    initLen : float, optional (default=None)
+        Number of steps for initialization of reservoir. If no option
+        passed then length of input divided by 10 is used.
+
+    """
