@@ -13,7 +13,7 @@ from itertools import cycle
 import sys
 if not sys.path.count(".."): sys.path.append("..")
 from sklearn.svm import SVC
-    
+
 def plot_2D(data, target, target_names):
     """ Function to plot 2D data
     Function taken from Scipy tutorial
