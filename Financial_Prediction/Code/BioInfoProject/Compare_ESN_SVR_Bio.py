@@ -16,14 +16,17 @@ from sklearn.cross_validation import train_test_split
 import pandas as pd
 from sklearn.svm import SVC
 from sklearn import preprocessing
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
 import matplotlib.pyplot as plt
 
-modelsets = [es.ESNC(),SVC(),esm.ESN()]
+
+modelsets = [es.ESNC(initLen = 0), SVC(), esm.ESN(initLen = 0)]
 modelnames = ['ESNC','SVC','ESN hard limiter']
 
 datasets = [np.loadtxt('../data/EEG_EYE.txt', delimiter = ',')]
 datasetnames = ['EEG_Eye']
-ResultTable = pd.DataFrame(columns=['Model','Data','NMSE'])
+ResultTable = pd.DataFrame(columns=['Model','Data','Accuracy', 'Precision', 'Recall'])
 print 'Initialization done'
 
 for X,dname in zip(*[datasets,datasetnames]):
@@ -37,16 +40,18 @@ for X,dname in zip(*[datasets,datasetnames]):
     for ithmodel, mname in zip(*[modelsets,modelnames]):  
         model = ithmodel
         yp = model.fit(Xtrain,ytrain).predict(Xtest)
-        ErrorRatio = np.average([i!=j for i,j in zip(yp,ytest)])
-        res = {'Model':mname,'Data':dname,'ErrorRatio':ErrorRatio}
+        Accuracy = np.average([i==j for i,j in zip(yp,ytest)])
+        Precision = precision_score(ytest, yp)
+        Recall = recall_score(ytest, yp)
+        res = {'Model':mname,'Data':dname,'Accuracy':Accuracy, 'Precision':Precision, 'Recall': Recall}
         ResultTable = ResultTable.append(res,ignore_index=True)   
         print res 
         plt.figure()
         plt.title(mname+' '+dname)
-        plot(ytest[:800],label='Actual')
-        plot(yp[:800],label='Predicted')
+        plot(ytest,label='Actual')
+        plot(yp,label='Predicted')
         plt.legend()
-        plt.axis([0,800,-2,2])
+        plt.axis([0,ytest.shape[0],-.3,1.3])
         
 print ResultTable
 #ResultTable.to_csv('ComparisonRes.csv')
