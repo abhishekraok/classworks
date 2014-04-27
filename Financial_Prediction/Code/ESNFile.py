@@ -12,6 +12,7 @@ https://sites.google.com/site/abhishekraokrishna/
 """
 import numpy as np
 import data_matrix as rls
+from sklearn.svm import SVC
 
 def ts_train_test_split(X, test_size=0.3, lags=0):
     """ Converts time series data into Xtrain, ytrain, Xtest and ytest.
@@ -104,21 +105,20 @@ class ESN:
             self.trainLen = min(self.trainLen, len(X))
         self.Win = (np.random.rand(self.resSize,1+self.inSize)-0.5) * 1
          # allocated memory for the design (collected self.states) matrix
-        self.state = np.zeros((1+self.inSize+self.resSize,self.trainLen-self.initLen))
+        self.Nfin = 1 +self.resSize +self.inSize
+        self.state = np.zeros((self.Nfin,self.trainLen-self.initLen))
         return self
         
     def runreservoir(self,X):
         """ Run reservoir with data X and generate Xstates"""
         self.x = np.zeros((self.resSize,1))
-        for t in range(self.trainLen):
-            # TODO check this
+        Xstate = np.zeros((self.Nfin,X.shape[0]-self.initLen))
+        for t in range(X.shape[0]):
             u = X[None,t].T
             self.x = (1-self.a)*self.x + self.a*np.tanh( np.dot( self.Win, np.vstack((1,u)) ) + np.dot( self.W, self.x ) )
             if t >= self.initLen:
-                self.state[:,t-self.initLen] = np.vstack((1,u,self.x))[:,0]
-        return self
-          
-
+                Xstate[:,t-self.initLen] = np.vstack((1,u,self.x))[:,0]
+        return Xstate
         
     def fit(self, X, y, trainLen=None):
         """Fit the ESN model according to the given training data.
@@ -144,12 +144,12 @@ class ESN:
             Returns the ESN class.        
         """
         self = self.setparams(X,y,trainLen) # Set parameters, initialization
-        self = self.runreservoir(X)         # Run the reservoir for input X
+        self.state = self.runreservoir(X)         # Run the reservoir for input X
         # train the output
         reg = 1e-8  # regularization coefficient
         self.state_T = self.state.T
         self.Wout = np.dot( np.dot(y[self.initLen:].T,self.state_T), np.linalg.inv( np.dot(self.state,self.state_T) + \
-                    reg*np.eye(1+self.inSize+self.resSize) ) )
+                    reg*np.eye(self.Nfin) ) )
         return self
         
     def predict(self, X, testLen=None):
@@ -235,12 +235,12 @@ class ESN:
         # Initializtions
         self = self.setparams(X,y)
         Y = np.zeros((self.trainLen-self.initLen, self.outSize))
-        Nfin = self.resSize+self.inSize +1
+        self.Nfin = self.resSize+self.inSize +1
         # End of initializations 
         
         # Recursive Least Square solution for Wout
-        self.Wout = np.random.rand(self.outSize, Nfin)-0.5
-        P0i = [np.identity(Nfin) for i in range(self.outSize)]
+        self.Wout = np.random.rand(self.outSize, self.Nfin)-0.5
+        P0i = [np.identity(self.Nfin) for i in range(self.outSize)]
         RLSWout = [rls.Estimator(self.Wout[i,:].reshape(-1,1),P0i[i]) for i in range(self.outSize)]    
         Rk = 1e-2 # This is not really needed, all our measurements
         #.. have equal variance , not sure
@@ -304,12 +304,28 @@ class ESNC(ESN):
             Returns the ESN class.        
         """
         self = self.setparams(X,y,trainLen) # Set parameters, initialization
-        self = self.runreservoir(X)         # Run the reservoir for input X
+        self.state = self.runreservoir(X)         # Run the reservoir for input X
+        y = y[self.initLen:]
+        self.svmod = SVC().fit(self.state.T,y)
+        # train the outpu
+        return self
         
-        # train the output
+    def predict(self, X, testLen=None):
+        """Perform classification on samples in X usin ESN Classifier.
 
-        return self      
-        
+        For an one-class model, +1 or -1 is returned. Uses SVM of sklearn.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix}, shape = [n_samples, n_features]
+
+        Returns
+        -------
+        y_pred : array, shape = [n_samples]
+            Class labels for samples in X.
+        """
+        return self.svmod.predict(self.runreservoir(X).T)
+
     def adaptfitpredict(self, X, y):
         """Fit the ESNC model adaptively and predict according to 
         the given training data. 
@@ -349,15 +365,15 @@ class ESNC(ESN):
             self.trainLen = min(self.trainLen, len(X))
         self.Win = (np.random.rand(self.resSize,1+self.inSize)-0.5) * 1
          # allocated memory for the design (collected self.states) matrix
-        self.state = np.zeros((1+self.inSize+self.resSize,self.trainLen-self.initLen))
+        self.state = np.zeros((self.Nfin,self.trainLen-self.initLen))
         Y = np.zeros((self.trainLen, self.outSize))
-        Nfin = self.resSize+self.inSize +1
+        self.Nfin = self.resSize+self.inSize +1
         # End of initializations 
         
         # Recursive Least Square solution for Wout
         
-        self.Wout = np.random.rand(self.outSize, Nfin)-0.5
-        P0i = [np.identity(Nfin) for i in range(self.outSize)]
+        self.Wout = np.random.rand(self.outSize, self.Nfin)-0.5
+        P0i = [np.identity(self.Nfin) for i in range(self.outSize)]
         RLSWout = [rls.Estimator(self.Wout[i,:].reshape(-1,1),P0i[i]) for i in range(self.outSize)]    
         Rk = 1e-2 # This is not really needed, all our measurements
         #.. have equal variance
@@ -380,5 +396,5 @@ class ESNC(ESN):
 #        reg = 1e-8  # regularization coefficient
 #        self.state_T = self.state.T
 #        self.Wouti = np.dot( np.dot(y[self.initLen:].T,self.state_T), np.linalg.inv( np.dot(self.state,self.state_T) + \
-#                    reg*np.eye(1+self.inSize+self.resSize) ) )
+#                    reg*np.eye(self.Nfin) ) )
         return Y
