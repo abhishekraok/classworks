@@ -6,10 +6,11 @@ Created on Sun Apr 27 11:58:48 2014
 Spline dataset classification
 """
 import csv
+import sys
 import numpy as np
 import os
 if not sys.path.count('..'): sys.path.append('..')
-import ESNFile as es
+#import ESNFile as es
 from sklearn.svm import SVC
 from sklearn.cross_validation import train_test_split
 import matplotlib.pyplot as plt
@@ -59,24 +60,26 @@ def plot_2D(data, target, target_names):
     plt.legend()
     
 ######################## Main ##########################    
-plt.close('all')
-X,y = readSpliceData('..\Data\splice.data')
-
-#Machine learning part begins
-Xtrain,Xtest, ytrain,ytest = train_test_split(X,y)
-yp = SVC().fit(Xtrain,ytrain).predict(Xtest)
-Accuracy = np.average([i==j for i,j in zip(yp,ytest)])
-
-# Results
-print 'The Accuracy using SVC is ', Accuracy
-#---- No point in plotting time series data
-#plt.figure()
-#plt.plot(yp,'o',label='Predicted')
-#plt.plot(ytest+0.01,'d',label='Actual')
-#plt.axis([0,ytest.shape[0],-.1,2.1])
-#plt.legend()
-xpca = PCA(n_components=2).fit_transform(Xtest)
-plot_2D(xpca,yp,Output_Alphabet)
-plt.title('Predicted')
-plot_2D(xpca,ytest,Output_Alphabet)
-plt.title('Actual')
+if __name__ == "__main__": 
+    plt.close('all')
+    X,y = readSpliceData('splice.txt')
+    
+    #Machine learning part begins
+    Xtrain,Xtest, ytrain,ytest = train_test_split(X,y)
+    yp = SVC().fit(Xtrain,ytrain).predict(Xtest)
+    Accuracy = np.average([i==j for i,j in zip(yp,ytest)])
+    
+    # Results
+    print 'The Accuracy using SVC is ', Accuracy
+    #---- No point in plotting time series data
+    #plt.figure()
+    #plt.plot(yp,'o',label='Predicted')
+    #plt.plot(ytest+0.01,'d',label='Actual')
+    #plt.axis([0,ytest.shape[0],-.1,2.1])
+    #plt.legend()
+    Output_Alphabet = list(set(y))
+    xpca = PCA(n_components=2).fit_transform(Xtest)
+    plot_2D(xpca,yp,Output_Alphabet)
+    plt.title('Predicted')
+    plot_2D(xpca,ytest,Output_Alphabet)
+    plt.title('Actual')

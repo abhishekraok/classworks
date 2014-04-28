@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """
+ESN Modified
 Created on Sun Apr 20 19:12:46 2014
 
 @author: Colleen
@@ -146,6 +147,8 @@ class ESN:
         self.state_T = self.state.T
         self.Wout = np.dot( np.dot(y[self.initLen:].T,self.state_T), np.linalg.inv( np.dot(self.state,self.state_T) + \
                     reg*np.eye(1+self.inSize+self.resSize) ) )
+        self.alphabet = list(set(y))                            #used for classification in predict method            
+                    
         return self
     
         
@@ -169,18 +172,24 @@ class ESN:
         if testLen == None:
             testLen = X.shape[0]
         Y = np.zeros((testLen, self.outSize if not self.outSize == None else 1))
-        
         for t in range( min(testLen,X.shape[0]) ):
             u = X[None,t].T ## this would be a predictive mode:
             self.x = (1-self.a)*self.x + self.a*np.tanh( np.dot( self.Win, np.vstack((1,u)) ) + np.dot( self.W, self.x ) )
             y = np.dot( self.Wout, np.vstack((1,u,self.x)) )
-            if (y > 2):
-                y = 2
-            elif (y < -2):
-                y = -2
+#            if (y > 2):
+#                y = 2
+#            elif (y < 0):
+#                y = 0
+#            else:
+#                y = np.round(y)
+            
+            y = self.alphabet[np.argmin([abs(y-i) for i in self.alphabet])]
+            
             Y[t] = y
             # generative mode:
             # u = y
+            
+            
         if self.outSize == None:
             Y = Y.reshape(Y.shape[0])
         return Y
