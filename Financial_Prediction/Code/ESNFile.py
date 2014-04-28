@@ -72,13 +72,13 @@ class ESN:
     a : float, optional (default=0.3)
         Leak rate of the neurons.
          
-    initLen : float, optional (default=None)
+    initLen : float, optional (default=0)
         Number of steps for initialization of reservoir. If no option
         passed then length of input divided by 10 is used.
 
     """
     def __init__(self, resSize=100, 
-                 a=0.3, initLen=None):
+                 a=0.3, initLen=0):
         np.random.seed(42)
         self.W = np.random.rand(resSize,resSize)-0.5
         # Option 1 - direct scaling (quick&dirty, reservoir-specific):
@@ -93,8 +93,6 @@ class ESN:
     def setparams(self,X,y, trainLen=None):
         """ Sets parameters based on input X,y"""
         self.outSize = y.shape[1] if len(y.shape) > 1 else 1
-        if self.initLen == None:
-            self.initLen = int(np.floor(len(X)/10))
         if trainLen == None:
             self.trainLen = X.shape[0]
         if len(X.shape) > 1 : # Check if array or matrix
