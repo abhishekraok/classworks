@@ -12,19 +12,21 @@ import matplotlib.pyplot as plt
 import sys
 if not sys.path.count(".."): sys.path.append("..")
 import ESNFile as es
+from sklearn.preprocessing import normalize
 
 # Data handling
 initLen = 100
-modelsets = [es.ESN(resSize=99, initLen=initLen)]
+modelsets = [es.ESN(resSize=199, initLen=initLen)]
 print 'Initializing done'
 modelnames = ['ESN']
 
 datasets = [pd.read_csv('../data/pdeqretsnonan.csv',
-                 index_col=0, parse_dates=True).ix[:,:5].resample('W',
+                 index_col=0, parse_dates=True).ix[:,:].resample('M',
                  how='mean').values]
 datasetnames = ['Financial']
 
 for X,dname in zip(*[datasets,datasetnames]):
+    X = normalize(X)
     y = X[1:]
     X = X[:-1]
     for ithmodel, mname in zip(*[modelsets,modelnames]):  
@@ -37,7 +39,7 @@ for X,dname in zip(*[datasets,datasetnames]):
 #plot(X,)
 #plt.title('The Entire Time Series')
 plt.figure()
-plot(y[:,0],label='Test Target')
-plot(yp[:,0],label='Predicted')
+plot(y[:200,0],label='Test Target')
+plot(yp[:200,0],'o--',label='Predicted')
 plt.title('Predicted vs actual')
 plt.legend()

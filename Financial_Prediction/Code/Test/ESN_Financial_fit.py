@@ -12,13 +12,13 @@ import matplotlib.pyplot as plt
 import ESNFile as es
 
 # Data handling
-df = pd.read_csv('data/pdeqretsnonan.csv',index_col=0, parse_dates=True)
-X = df.ix[:,:5].resample('W', how='mean')
+#df = pd.read_csv('../data/pdeqretsnonan.csv',index_col=0, parse_dates=True)
+#X = df.ix[:,:5].resample('W', how='mean')
 
 modelsets = [es.ESN(resSize=999)]
 modelnames = ['ESN']
 
-datasets = [pd.read_csv('data/pdeqretsnonan.csv',
+datasets = [pd.read_csv('../data/pdeqretsnonan.csv',
                  index_col=0, parse_dates=True).ix[:,:5].resample('M',
                  how='mean').values]
 datasetnames = ['Financial']

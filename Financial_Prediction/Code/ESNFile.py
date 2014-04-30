@@ -78,7 +78,7 @@ class ESN:
 
     """
     def __init__(self, resSize=100, 
-                 a=0.3, initLen=0):
+                 a=0.3, initLen=0, leakRate = 0.3):
         np.random.seed(42)
         self.W = np.random.rand(resSize,resSize)-0.5
         # Option 1 - direct scaling (quick&dirty, reservoir-specific):
@@ -87,7 +87,7 @@ class ESN:
         self.rhoW = max(abs(np.linalg.eig(self.W)[0]))
         self.W *= 1.25 / self.rhoW
         self.resSize = resSize 
-        self.a = a
+        self.leakRate = leakRate
         self.initLen = initLen
     
     def setparams(self,X,y, trainLen=None):
@@ -113,7 +113,7 @@ class ESN:
         Xstate = np.zeros((self.Nfin,X.shape[0]-self.initLen))
         for t in range(X.shape[0]):
             u = X[None,t].T
-            self.x = (1-self.a)*self.x + self.a*np.tanh( np.dot( self.Win, np.vstack((1,u)) ) + np.dot( self.W, self.x ) )
+            self.x = (1-self.leakRate)*self.x + self.leakRate*np.tanh( np.dot( self.Win, np.vstack((1,u)) ) + np.dot( self.W, self.x ) )
             if t >= self.initLen:
                 Xstate[:,t-self.initLen] = np.vstack((1,u,self.x))[:,0]
         return Xstate
@@ -172,7 +172,7 @@ class ESN:
         
         for t in range( min(testLen,X.shape[0]) ):
             u = X[None,t].T ## this would be a predictive mode:
-            self.x = (1-self.a)*self.x + self.a*np.tanh( np.dot( self.Win, np.vstack((1,u)) ) + np.dot( self.W, self.x ) )
+            self.x = (1-self.leakRate)*self.x + self.leakRate*np.tanh( np.dot( self.Win, np.vstack((1,u)) ) + np.dot( self.W, self.x ) )
             y = np.dot( self.Wout, np.vstack((1,u,self.x)) )
             Y[t] = y.reshape(Y[0].shape)
             # generative mode:
@@ -247,7 +247,7 @@ class ESN:
         self.x = np.zeros((self.resSize,1))
         for t in range(self.trainLen):
             u = X[None,t].T
-            self.x = (1-self.a)*self.x + self.a*np.tanh(np.dot(self.Win, np.vstack((1,u))) + np.dot( self.W, self.x ) )
+            self.x = (1-self.leakRate)*self.x + self.leakRate*np.tanh(np.dot(self.Win, np.vstack((1,u))) + np.dot( self.W, self.x ) )
             yp = np.dot( self.Wout, np.vstack((1,u,self.x))) # Predict
             if t >= self.initLen:  # Write results only after transients
                 self.state[:,t-self.initLen] = np.vstack((1,u,self.x))[:,0]
@@ -380,7 +380,7 @@ class ESNC(ESN):
         self.x = np.zeros((self.resSize,1))
         for t in range(self.trainLen):
             u = X[None,t].T
-            self.x = (1-self.a)*self.x + self.a*np.tanh(np.dot(self.Win, np.vstack((1,u))) + np.dot( self.W, self.x ) )
+            self.x = (1-self.leakRate)*self.x + self.leakRate*np.tanh(np.dot(self.Win, np.vstack((1,u))) + np.dot( self.W, self.x ) )
             if t >= self.initLen:
                 self.state[:,t-self.initLen] = np.vstack((1,u,self.x))[:,0]
                 yp = np.greater(np.dot( self.Wout, np.vstack((1,u,self.x))),0.5)
