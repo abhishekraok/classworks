@@ -23,21 +23,32 @@ modelsets = [es.ESNC(initLen = 0),SVC(),esm.ESN(initLen = 0)]
 modelnames = ['ESNC','SVC','ESN hard limiter']
 
 X,y = readSpliceData('../data/splice.txt')
-Xtrain, Xtest, ytrain, ytest = X[::2], X[1::2], y[::2], y[1::2]
+Xtrain, Xtest, ytrain, ytest = X[::2], X[1::2], y[::2], y[1::2]     #use every other data point
 
-ResultTable = pd.DataFrame(columns=['Model','Data','Accuracy','Precision', 'Recall'])
+ResultTable = pd.DataFrame(columns=['Model','Data','Accuracy','ErrorEI','ErrorIE','ErrorN','Precision EI', 'Precision IE', 'Precision N','Recall EI', 'Recall IE', 'Recall N'])
 print 'Initialization done'
 
 
 for ithmodel, mname in zip(*[modelsets,modelnames]):  
     model = ithmodel
     yp = model.fit(Xtrain,ytrain).predict(Xtest)
+    #Calculate effectiveness
     Accuracy = np.average([i==j for i,j in zip(yp,ytest)])
-    Precision = precision_score(ytest, yp, average = none)
-    Recall = 
-    res = {'Model':mname,'Data':'Splice','Accuracy':Accuracy,'Precision of ':Precision, 'Recall':Recall}
+    ErrorEI = np.average([i!=j for i,j in zip(yp[ytest == 0],ytest[ytest == 0])])
+    ErrorIE = np.average([i!=j for i,j in zip(yp[ytest == 1],ytest[ytest == 1])])
+    ErrorN = np.average([i!=j for i,j in zip(yp[ytest == 2],ytest[ytest == 2])])
+    precision = precision_score(ytest, yp, average = None)
+    PrecEI = precision[0]
+    PrecIE = precision[1]
+    PrecN = precision[2]
+    recall = recall_score(ytest, yp, average = None)
+    RecEI = recall[0]
+    RecIE = recall[1]
+    RecN = recall[2]
+    res = {'Model':mname,'Data':'Splice','Accuracy':Accuracy,'ErrorEI':ErrorEI,'ErrorIE':ErrorIE,'ErrorN':ErrorN,'Precision EI':PrecEI, 'Precision IE':PrecIE, 'Precision N':PrecN,'Recall EI':RecEI, 'Recall IE':RecIE, 'Recall N':RecN}
     ResultTable = ResultTable.append(res,ignore_index=True)   
     print res 
+    #Plot
     plt.figure()
     plt.title(mname+' Splice')
     plot(ytest,label='Actual')

@@ -33,20 +33,22 @@ print 'Initialization done'
 for ithmodel, mname in zip(*[modelsets,modelnames]):  
     model = ithmodel
     yp = model.fit(Xtrain,ytrain).predict(Xtest)
-    ytestFreeze = np.zeros(ytest[ytest > 0].shape[0])
-    ypFreeze = np.zeros(ytest[ytest > 0].shape[0])
+    ytestFreeze = []
+    ypFreeze = []
     for i in range(yp.shape[0]):
-        count = 0
         if yp[i] == 2:
-            ypFreeze[count] = 1
+            ypFreeze.append(1)
             if ytest[i] > 0:
-                ytestFreeze[count] = ytest[i] - 1
-            count = count + 1
+                ytestFreeze.append(ytest[i] - 1)
+            else:
+                ytestFreeze.append(0)
         elif yp[i] == 1:
-            ypFreeze[count] = 0
+            ypFreeze.append(0)
             if ytest[i] > 0:
-                ytestFreeze[count] = ytest[i] - 1
-            count = count + 1
+                ytestFreeze.append(ytest[i] - 1)
+            else:
+                ytestFreeze.append(0)
+            
     #ypfreeze = [1 if i==2 else 0 for i in yp[yp>0]]
     #ytestfreeze = [1 if i==2 else 0 for i in ytest[ytest>0]]
     Accuracy = np.average([i==j for i,j in zip(yp,ytest)])
