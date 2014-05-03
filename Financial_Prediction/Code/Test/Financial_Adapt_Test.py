@@ -6,7 +6,6 @@ Created on Thu Apr 24 23:10:40 2014
 
 Financial prediction using adaptive ESN
 """
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import sys
@@ -39,7 +38,7 @@ for X,dname in zip(*[datasets,datasetnames]):
 #plot(X,)
 #plt.title('The Entire Time Series')
 plt.figure()
-plot(y[:200,0],label='Test Target')
-plot(yp[:200,0],'o--',label='Predicted')
+plt.plot(y[:200,0],label='Test Target')
+plt.plot(yp[:200,0],'o--',label='Predicted')
 plt.title('Predicted vs actual')
 plt.legend()
