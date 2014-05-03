@@ -1,68 +1,78 @@
 # -*- coding: utf-8 -*-
 """
+COMPLETE!
+
 Created on Sun Apr 27 16:48:37 2014
 
-@author: Colleen
+@author: Colleen O'Rourke
+
+Compare the performance of ESNC, ESN with hard limiter and SVC for 
+Freezing of Gait data
+
+Data from: http://archive.ics.uci.edu/ml/datasets/Daphnet+Freezing+of+Gait
 """
 import sys
 if not sys.path.count(".."): sys.path.append("..")
 import ESNFile as es
 import ESNModified as esm
 import numpy as np
-from sklearn.cross_validation import train_test_split
 import pandas as pd
-from sklearn.svm import SVC
 from sklearn import preprocessing
-from sklearn.metrics import precision_score
-from sklearn.metrics import recall_score
+from sklearn.svm import SVC
+from sklearn.metrics import precision_score, recall_score
 import matplotlib.pyplot as plt
-#from Spline import readGaitData
 
-modelsets = [es.ESNC(initLen = 0),SVC(),esm.ESN(initLen = 0)]
-modelnames = ['ESNC','SVC','ESN hard limiter']
+modelset = [es.ESNC(initLen=0), SVC(), esm.ESN(initLen=0)]
+modelnames = ['ESNC', 'SVC', 'ESN hard limiter']
 
-XActual = np.loadtxt('../data/Gait1.txt') #**
-y = XActual[::10,-1]           #y is the last column of data set
-X = XActual[::10,1:-1]          #X is all of the data except last column
+x_input = np.loadtxt('../data/Gait1.txt')
+Y = x_input[::10, -1]       # Y is the last column; every 10th point
+X = x_input[::10, 1:-1]     # X is every 10th data point except last column
 X = preprocessing.normalize(X)
-Xtrain, Xtest, ytrain, ytest = X[::2], X[1::2], y[::2], y[1::2]
-
-ResultTable = pd.DataFrame(columns=['Model','Data','Accuracy','Precision', 'Recall'])
+# use every other data point ??
+Xtrain, Xtest, Ytrain, Ytest = X[::2], X[1::2], Y[::2], Y[1::2]                 #***
+# ResultTable stores values of all comparison measures
+ResultTable = pd.DataFrame(columns=['Model', 'Data', 'Accuracy', 
+                                    'Precision', 'Recall'])
 print 'Initialization done'
 
-for ithmodel, mname in zip(*[modelsets,modelnames]):  
+for ithmodel, mname in zip(*[modelset, modelnames]):  
     model = ithmodel
-    yp = model.fit(Xtrain,ytrain).predict(Xtest)
-    ytestFreeze = []
-    ypFreeze = []
-    for i in range(yp.shape[0]):
-        if yp[i] == 2:
-            ypFreeze.append(1)
-            if ytest[i] > 0:
-                ytestFreeze.append(ytest[i] - 1)
+    Ypredict = model.fit(Xtrain,Ytrain).predict(Xtest)     # fit then predict
+    
+    # delete all 0's from Ytest and Ypredict; 
+    # convert 1's and 2's into binary (0 and 1, respectively) 
+    Ytest_binary = []
+    Ypredict_binary = []
+    for i in range(Ypredict.shape[0]):
+        if Ypredict[i] == 2:
+            Ypredict_binary.append(1)
+            if Ytest[i] > 0:
+                Ytest_binary.append(Ytest[i] - 1)
             else:
-                ytestFreeze.append(0)
-        elif yp[i] == 1:
-            ypFreeze.append(0)
-            if ytest[i] > 0:
-                ytestFreeze.append(ytest[i] - 1)
+                Ytest_binary.append(0)
+        elif Ypredict[i] == 1:
+            Ypredict_binary.append(0)
+            if Ytest[i] > 0:
+                Ytest_binary.append(Ytest[i] - 1)
             else:
-                ytestFreeze.append(0)
-            
-    #ypfreeze = [1 if i==2 else 0 for i in yp[yp>0]]
-    #ytestfreeze = [1 if i==2 else 0 for i in ytest[ytest>0]]
-    Accuracy = np.average([i==j for i,j in zip(yp,ytest)])
-    Precision = precision_score(ytestFreeze, ypFreeze)
-    Recall = recall_score(ytestFreeze, ypFreeze)
-    res = {'Model':mname,'Data':'Gait','Accuracy':Accuracy, 'Precision':Precision, 'Recall': Recall}
-    ResultTable = ResultTable.append(res,ignore_index=True)   
-    print res 
+                Ytest_binary.append(0)
+                
+    #calculate comparison measures
+    accuracy = np.average([i == j for i, j in zip(Ypredict, Ytest)])
+    precision = precision_score(Ytest_binary, Ypredict_binary)
+    recall = recall_score(Ytest_binary, Ypredict_binary)
+    results = {'Model': mname, 'Data': 'Gait', 'Accuracy': accuracy, 
+           'Precision': precision, 'Recall': recall}
+    ResultTable = ResultTable.append(results, ignore_index=True)   
+    print results
+    
+    # plot
     plt.figure()
-    plt.title(mname+' Gait')
-    plot(ytest,label='Actual')
-    plot(yp,label='Predicted')
+    plt.title(mname + ' Gait')
+    plot(Ytest, label='Actual')
+    plot(Ypredict, label='Predicted')
     plt.legend()
-    plt.axis([0,ytest.shape[0],-.3,2.3])
+    plt.axis([0, Ytest.shape[0], -.3, 2.3])
         
 print ResultTable
-#ResultTable.to_csv('ComparisonRes.csv')
