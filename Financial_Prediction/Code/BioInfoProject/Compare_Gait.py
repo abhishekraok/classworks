@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-COMPLETE!
-
 Created on Sun Apr 27 16:48:37 2014
 
 @author: Colleen O'Rourke
@@ -14,7 +12,6 @@ Data from: http://archive.ics.uci.edu/ml/datasets/Daphnet+Freezing+of+Gait
 import sys
 if not sys.path.count(".."): sys.path.append("..")
 import ESNFile as es
-import ESNModified as esm
 import numpy as np
 import pandas as pd
 from sklearn import preprocessing
@@ -22,15 +19,15 @@ from sklearn.svm import SVC
 from sklearn.metrics import precision_score, recall_score
 import matplotlib.pyplot as plt
 
-modelset = [es.ESNC(initLen=0), SVC(), esm.ESN(initLen=0)]
+modelset = [es.ESNC(initLen=0), SVC(), es.ESNHardLimiter(initLen=0)]
 modelnames = ['ESNC', 'SVC', 'ESN hard limiter']
 
 x_input = np.loadtxt('../data/Gait1.txt')
 Y = x_input[::10, -1]       # Y is the last column; every 10th point
 X = x_input[::10, 1:-1]     # X is every 10th data point except last column
 X = preprocessing.normalize(X)
-# use every other data point ??
-Xtrain, Xtest, Ytrain, Ytest = X[::2], X[1::2], Y[::2], Y[1::2]                 #***
+#Split the training and test set by using every other data point (50:50)
+Xtrain, Xtest, Ytrain, Ytest = X[::2], X[1::2], Y[::2], Y[1::2]                 
 # ResultTable stores values of all comparison measures
 ResultTable = pd.DataFrame(columns=['Model', 'Data', 'Accuracy', 
                                     'Precision', 'Recall'])
@@ -70,8 +67,8 @@ for ithmodel, mname in zip(*[modelset, modelnames]):
     # plot
     plt.figure()
     plt.title(mname + ' Gait')
-    plot(Ytest, label='Actual')
-    plot(Ypredict, label='Predicted')
+    plt.plot(Ytest, label='Actual')
+    plt.plot(Ypredict, label='Predicted')
     plt.legend()
     plt.axis([0, Ytest.shape[0], -.3, 2.3])
         

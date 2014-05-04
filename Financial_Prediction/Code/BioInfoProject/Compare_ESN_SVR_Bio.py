@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-COMPLETE!
-
 Created on Tue Apr 08 19:38:20 2014
 
 @author: Abhishek Rao
@@ -14,7 +12,6 @@ Data from: http://archive.ics.uci.edu/ml/datasets/EEG+Eye+State#
 import sys
 if not sys.path.count(".."): sys.path.append("..")
 import ESNFile as es
-import ESNModified as esm
 import numpy as np
 import pandas as pd
 from sklearn import preprocessing
@@ -23,7 +20,7 @@ from sklearn.metrics import precision_score, recall_score
 import matplotlib.pyplot as plt
 
 
-modelset = [es.ESNC(initLen=0), SVC(), esm.ESN(initLen=0)]
+modelset = [es.ESNC(initLen=0), SVC(), es.ESNHardLimiter(initLen=0)]
 modelnames = ['ESNC', 'SVC', 'ESN hard limiter']
 
 #preserved structure to use multiple data sets in future
@@ -38,6 +35,7 @@ for X, dname in zip(*[datasets, datasetnames]):
     Y = X[:, -1]           #Y is the last column of data set
     X = X[:, :-1]          #X is all of the data except last column
     X = preprocessing.normalize(X)
+    #Split the training and test set by using every other data point (50:50)
     Xtrain, Xtest, Ytrain, Ytest = X[::2], X[1::2], Y[::2], Y[1::2]
     
     for ithmodel, mname in zip(*[modelset, modelnames]):  
@@ -56,8 +54,8 @@ for X, dname in zip(*[datasets, datasetnames]):
         # plot
         plt.figure()
         plt.title(mname+ ' ' + dname)
-        plot(Ytest, label='Actual')
-        plot(Ypredict, label='Predicted')
+        plt.plot(Ytest, label='Actual')
+        plt.plot(Ypredict, label='Predicted')
         plt.legend()
         plt.axis([0, Ytest.shape[0], -.3, 1.3])
         
