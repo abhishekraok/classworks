@@ -28,7 +28,7 @@ for K in Klist:  # Different Number of clusters
     mu = X[index[:K]] #Random choices       
     LLL.append(EM(X,mu,sigma,K)[0])   
 # Show Results
-BIC = [-2*LLL[k] + Klist[k]*(log(N)+log(2*pi)) for k in range(len(LLL))]
+BIC = [-2*LLL[k] + ((D+D*(D-1)/2+Klist[k]-1)*Klist[k])*(log(N)+log(2*pi)) for k in range(len(LLL))]
 plt.figure()
 #plt.axis([2.5,6.5])   
 plot(Klist,LLL,'o--')
