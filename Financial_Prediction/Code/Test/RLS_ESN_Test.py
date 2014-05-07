@@ -16,9 +16,8 @@ X = sm.datasets.sunspots.load_pandas().data.ix[:,1].values
 ytest = X[1:]
 X = X[:-1]
 initLen = 0
-mod1 = es.ESN(resSize=4,initLen=initLen)
-yp = mod1.adaptfitpredict(X,ytest)
-ytest = ytest[initLen:]
+mod1 = es.ESNAdapt(resSize=40,initLen=initLen)
+yp = mod1.predict(X,ytest)
 aWout = mod1.Wout
 print (yp-ytest).var()/ytest.var()
 plt.figure()
@@ -31,3 +30,4 @@ plt.plot(ytest,'d--',label='Test target')
 #print (yp-ytest).var()/ytest.var()
 #print aWout,fitWout
 plt.legend()
+print 'R2 is ', mod1.score(X,ytest)

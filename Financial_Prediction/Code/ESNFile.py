@@ -13,6 +13,7 @@ https://sites.google.com/site/abhishekraokrishna/
 import numpy as np
 import data_matrix as rls
 from sklearn.svm import SVC
+from sklearn.base import RegressorMixin, BaseEstimator
 
 def ts_train_test_split(X, test_size=0.3, lags=0):
     """ Converts time series data into Xtrain, Xtest, Ytrain and Ytest.
@@ -64,7 +65,7 @@ def ts_train_test_split(X, test_size=0.3, lags=0):
     return X[:Ntrain], X[Ntrain:], Y[:Ntrain], Y[Ntrain:]
 
 
-class ESN(object):
+class ESN(RegressorMixin,BaseEstimator):
     """Builds an Echo self.state network class
     
     For more details visit http://minds.jacobs-university.de/sites/default/
@@ -75,7 +76,7 @@ class ESN(object):
     resSize : float, optional (default=1000)
         The number of nodes in the reservoir.
 
-    a : float, optional (default=0.3)
+    leakRate : float, optional (default=0.3)
         Leak rate of the neurons.
          
     initLen : float, optional (default=0)
@@ -83,7 +84,7 @@ class ESN(object):
         passed then length of input divided by 10 is used.
 
     """
-    def __init__(self, resSize=100, a=0.3, initLen=0, leakRate = 0.3):
+    def __init__(self, resSize=100, leakRate = 0.3, initLen=0):
         np.random.seed(42)
         self.W = np.random.rand(resSize,resSize)-0.5
         self.rhoW = max(abs(np.linalg.eig(self.W)[0]))
@@ -92,9 +93,12 @@ class ESN(object):
         self.leakRate = leakRate
         self.initLen = initLen
     
-    def setparams(self,X,y, trainLen=None):
+    def setparams(self,X,y=None, trainLen=None):
         """ Sets parameters based on input X,y"""
+        if y == None:
+            y = np.roll(X, shift =-1, axis=0)
         self.outSize = y.shape[1] if len(y.shape) > 1 else 1
+        self.actual_output_size = y.shape[1] if len(y.shape) > 1 else None
         if trainLen == None:
             self.trainLen = X.shape[0]
         if len(X.shape) > 1 : # Check if array or matrix
@@ -181,8 +185,8 @@ class ESN(object):
                 np.dot( self.Win, np.vstack((1,u))) + np.dot(self.W, self.x ))
             y = np.dot(self.Wout, np.vstack((1, u, self.x)))
             Y[t] = y.reshape(Y[0].shape)
-        if self.outSize == None:
-            Y = Y.reshape(Y.shape[0])
+        if self.actual_output_size == None:
+            Y = Y.reshape(-1)
         return Y
         
     def checkts(self,X):
@@ -209,9 +213,8 @@ class ESN(object):
         
         Xtrain,Xtest,ytrain,ytest = ts_train_test_split(X)
         self = self.fit(Xtrain, ytrain)
-        yp = self.predict(Xtest)
-        return (yp-ytest).var() / ytest.var(), yp, ytest
-        
+        return self.score(Xtest,ytest), self.predict(Xtest), ytest
+   
     def adaptfitpredict(self, X, y):
         """Fit the ESN model adaptively and predict according to 
         the given training data. 
@@ -378,10 +381,38 @@ class ESNC(ESN):
         """
         return self.svmod.predict(self.runreservoir(X).T)                       
 
-    def adaptfitpredict(self, X, y):
-        """Fit the ESNC model adaptively and predict according to the given 
-            training data. 
+    
+
+class ESNAdapt(ESN):
+    """Builds an Echo State Network with adaptive Prediction.
+    
+    Subclass of ESN; Fit method does nothing. Changes Predict method.
+    
+    Parameters
+    ----------
+    resSize : float, optional (default=1000)
+        The number of nodes in the reservoir.
+
+    a : float, optional (default=0.3)
+        Leak rate of the neurons.
+         
+    initLen : float, optional (default=0)
+        Number of steps for initialization of reservoir. If no option
+        passed then length of input divided by 10 is used.
+
+    """
+    def __init__(self, resSize=100, leakRate = 0.3, initLen=0):
+        super(ESNAdapt, self).__init__(
+        resSize, leakRate, initLen)
         
+    def fit(self, X, y):
+        """ Does nothing in Adaptive class. Put here to prevent 
+        unneccesary computation"""
+        return self
+    
+    def predict(self, X, y=None):
+        """Fit the ESN model adaptively and predict according to 
+        the given training data. 
         Notations: Here X is used instead of u[n] for input following scikit
         learn convention. For the internal nodes state is used instead of X.
         
@@ -392,65 +423,44 @@ class ESNC(ESN):
             and n_features is the number of features.
 
         y : {array-like, sparse matrix}, shape (n_samples, n_features)
-            Target values ({0,1} in classification)
+            Target values (real numbers in regression)
 
                    
         Returns
         -------
         y_pred : {array-like, sparse matrix}, shape (n_samples, n_features)
             Predicted value of target(n+1) ~= y(n) = Wout*[x(n) u(n)]
-            
-        self : object
-            Returns the ESN class.        
-
         """
         
         # Initializtions
-        self.outSize = y.shape[1] if len(y.shape) > 1 else 1
-        if self.initLen == None:
-            self.initLen = int(np.floor(len(X)/10))
-        self.trainLen = X.shape[0]
-        if len(X.shape) > 1 : # Check if array or matrix
-            self.inSize = X.shape[1]
-            self.trainLen = min(self.trainLen, X.shape[0])
-        else:
-            self.inSize = 1
-            self.trainLen = min(self.trainLen, len(X))
-        self.Win = (np.random.rand(self.resSize,1+self.inSize)-0.5) * 1
-         # allocated memory for the design (collected self.states) matrix
-        self.state = np.zeros((self.Nfin,self.trainLen-self.initLen))
-        Y = np.zeros((self.trainLen, self.outSize))
+        self = self.setparams(X, y)
+        if y == None:
+            y = np.roll(X, shift =-1, axis=0)
+        Y = np.zeros((self.trainLen-self.initLen, self.outSize))
         self.Nfin = self.resSize+self.inSize +1
-        # End of initializations 
         
         # Recursive Least Square solution for Wout
-        
         self.Wout = np.random.rand(self.outSize, self.Nfin)-0.5
         P0i = [np.identity(self.Nfin) for i in range(self.outSize)]
-        RLSWout = [rls.Estimator(self.Wout[i,:].reshape(-1,1),P0i[i]) 
-                    for i in range(self.outSize)]    
-        Rk = 1e-2 # This is not really needed, all our measurements
-        #.. have equal variance
-        # Loop begins
+        RLSWout = [rls.Estimator(self.Wout[i, :].reshape(-1, 1),P0i[i]) for 
+                                                    i in range(self.outSize)]    
+        Rk = 1e-2 # This is not necessary:all our measurements have equal var
+        
         # run the reservoir with the data and collect X
         self.x = np.zeros((self.resSize,1))
         for t in range(self.trainLen):
-            u = X[None,t].T
-            self.x = (1-self.leakRate)*self.x + self.leakRate*np.tanh(np.dot
-                     (self.Win, np.vstack((1, u))) + np.dot(self.W, self.x ))
-            if t >= self.initLen:
-                self.state[:, t-self.initLen] = np.vstack((1, u, self.x))[:,0]
-                yp = np.greater(np.dot(self.Wout, np.vstack((1,u,self.x))),0.5)
-                for k, (pmat, rlsi) in enumerate(zip(P0i, RLSWout)):
-                    yact = y[t, k].reshape(-1, 1) if len(y.shape) > 1 else y[t]
-                    rlsi.update(np.vstack((1,u,self.x)).reshape(1,-1),yact,Rk)
-                    self.Wout[k] = rlsi.x.T
-                Y[t] = yp.reshape(Y[0].shape)
-        Y = Y.reshape(y.shape)
-        #Debugging code :
-#        reg = 1e-8  # regularization coefficient
-#        self.state_T = self.state.T
-#        self.Wouti = np.dot( np.dot(y[self.initLen:].T,self.state_T), 
-#                            np.linalg.inv( np.dot(self.state,self.state_T) + \
-#                    reg*np.eye(self.Nfin) ) )
+            u = X[None, t].T
+            self.x = (1-self.leakRate)*self.x + \
+                   self.leakRate*np.tanh(np.dot(self.Win, np.vstack((1,u))) + \
+                   np.dot( self.W, self.x ) )
+            yp = np.dot( self.Wout, np.vstack((1, u, self.x))) # predict
+            if t >= self.initLen:  # write results only after transients
+                self.state[:, t-self.initLen] = np.vstack((1, u, self.x))[:, 0]
+                Y[t-self.initLen] = yp.reshape(Y[0].shape)
+            # Adapt Wout
+            for k, (pmat, rlsi) in enumerate(zip(P0i, RLSWout)):
+                yact = y[t, k].reshape(-1, 1) if len(y.shape) > 1 else y[t]
+                rlsi.update(np.vstack((1, u, self.x)).reshape(1, -1), yact, Rk)
+                self.Wout[k] = rlsi.x.T
+        Y = Y.reshape(y[self.initLen:].shape)
         return Y

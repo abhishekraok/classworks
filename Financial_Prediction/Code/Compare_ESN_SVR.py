@@ -34,7 +34,7 @@ for X,dname in zip(*[datasets,datasetnames]):
         model = ithmodel
         yp = model.fit(Xtrain,ytrain).predict(Xtest)
         NMSE = (yp-ytest).var() / ytest.var()
-        res = {'Model':mname,'Data':dname,'NMSE':NMSE}
+        res = {'Model':mname,'Data':dname,'NMSE':("%.4f" %NMSE)}
         ResultTable = ResultTable.append(res,ignore_index=True)               
 
 print ResultTable

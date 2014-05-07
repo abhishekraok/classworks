@@ -31,12 +31,13 @@ X = np.loadtxt('data/MackeyGlass_t17.txt')
 #X = np.sin(np.arange(0,50,0.01)) + np.sin(8*np.arange(0,50,0.01)) + np.sin(17*np.arange(0,50,0.01)) 
 #X += 0.5*np.random.normal(size=X.shape)
 #for i in [2,20,100,500]:
-mod1 = es.ESN(resSize=9)
-NMSE,yp,ytest = mod1.checkts(X)
+resSize=9
+mod1 = es.ESN(resSize)
+R2,yp,ytest = mod1.checkts(X)
 plt.figure()
 plt.plot(yp[:999],'o-',label='Predicted')
 plt.plot(ytest[:999],'d--',label='Test target')
 plt.legend()
 plt.title('Prediction for reservoir size {0}'.format(resSize))
-print 'For reservoir size {0} the NMSE is {1}'.format(resSize,NMSE) 
+print 'For reservoir size {0} the R2 is {1}'.format(resSize,R2) 
     

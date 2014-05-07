@@ -15,12 +15,12 @@ from sklearn.preprocessing import normalize
 
 # Data handling
 initLen = 100
-modelsets = [es.ESN(resSize=199, initLen=initLen)]
+modelsets = [es.ESNAdapt(resSize=199, initLen=initLen)]
 print 'Initializing done'
 modelnames = ['ESN']
 
 datasets = [pd.read_csv('../data/pdeqretsnonan.csv',
-                 index_col=0, parse_dates=True).ix[:,:].resample('M',
+                 index_col=0, parse_dates=True).ix[:,:5].resample('M',
                  how='mean').values]
 datasetnames = ['Financial']
 
@@ -30,7 +30,7 @@ for X,dname in zip(*[datasets,datasetnames]):
     X = X[:-1]
     for ithmodel, mname in zip(*[modelsets,modelnames]):  
         model = ithmodel
-        yp = model.adaptfitpredict(X,y)
+        yp = model.predict(X,y)
         y = y[initLen:]
         NMSE = (yp-y).var() / y.var()
         print 'The NMSE for model {0} using data {1} is {2}'.format(mname,dname,NMSE)
